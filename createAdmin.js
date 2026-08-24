@@ -8,8 +8,8 @@ const User = require("./src/models/User");
 const createAdmin = async () => {
   await connectDB();
 
-  const email = "admin@example.com";
-  const password = "Admin@123456";
+  const email = "john@example.com";
+  const password = "john1234";
 
   const existing = await User.findOne({
     email,
