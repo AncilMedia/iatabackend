@@ -15,19 +15,8 @@ const app = express();
 
 /*
 |--------------------------------------------------------------------------
-| DATABASE
-|--------------------------------------------------------------------------
-*/
-
-connectDB();
-
-/*
-|--------------------------------------------------------------------------
 | CORS
 |--------------------------------------------------------------------------
-|
-| Flutter Web -> ngrok -> Node
-|
 */
 
 app.use(
@@ -87,7 +76,10 @@ app.use((req, res, next) => {
   console.log("Method:", req.method);
   console.log("URL:", req.originalUrl);
   console.log("Origin:", req.headers.origin || "No origin");
-  console.log("User-Agent:", req.headers["user-agent"] || "No user-agent");
+  console.log(
+    "User-Agent:",
+    req.headers["user-agent"] || "No user-agent"
+  );
   console.log("=================================");
 
   next();
@@ -120,25 +112,10 @@ app.get("/api/health", (req, res) => {
 |--------------------------------------------------------------------------
 */
 
-app.use(
-  "/api/auth",
-  authRoutes
-);
-
-app.use(
-  "/api/portfolio",
-  portfolioRoutes
-);
-
-app.use(
-  "/api/settings",
-  settingsRoutes
-);
-
-app.use(
-  "/api/enquiries",
-  enquiryRoutes
-);
+app.use("/api/auth", authRoutes);
+app.use("/api/portfolio", portfolioRoutes);
+app.use("/api/settings", settingsRoutes);
+app.use("/api/enquiries", enquiryRoutes);
 
 /*
 |--------------------------------------------------------------------------
@@ -168,8 +145,7 @@ app.use((err, req, res, next) => {
 
   res.status(err.status || 500).json({
     success: false,
-    message:
-      err.message || "Internal server error",
+    message: err.message || "Internal server error",
   });
 });
 
@@ -181,19 +157,31 @@ app.use((err, req, res, next) => {
 
 const PORT = process.env.PORT || 3000;
 
-app.listen(
-  PORT,
-  "0.0.0.0",
-  () => {
-    console.log("=================================");
-    console.log("IATA BACKEND");
-    console.log("=================================");
-    console.log(
-      `Server running on http://localhost:${PORT}`
+const startServer = async () => {
+  try {
+    await connectDB();
+
+    app.listen(PORT, "0.0.0.0", () => {
+      console.log("=================================");
+      console.log("IATA BACKEND");
+      console.log("=================================");
+      console.log(
+        `Server running on http://localhost:${PORT}`
+      );
+      console.log(
+        `Portfolio API: http://localhost:${PORT}/api/portfolio`
+      );
+      console.log("=================================");
+    });
+  } catch (error) {
+    console.error(
+      "Unable to start server because MongoDB connection failed."
     );
-    console.log(
-      `Portfolio API: http://localhost:${PORT}/api/portfolio`
-    );
-    console.log("=================================");
+
+    process.exit(1);
   }
-);
+};
+
+startServer();
+
+module.exports = app;

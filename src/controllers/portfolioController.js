@@ -62,13 +62,13 @@ const createPortfolio = async (req, res) => {
     // VALIDATE TEXT
     // ========================================================
 
-    if (!title || !description) {
-      return res.status(400).json({
-        success: false,
-        message:
-          "Title and description are required",
-      });
-    }
+    // if (!title || !description) {
+    //   return res.status(400).json({
+    //     success: false,
+    //     message:
+    //       "Title and description are required",
+    //   });
+    // }
 
 
     // ========================================================
