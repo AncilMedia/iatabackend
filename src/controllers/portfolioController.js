@@ -1,39 +1,79 @@
 const Portfolio = require("../models/Portfolio");
+
 const cloudinary = require("../config/cloudinary");
+
+
+// ============================================================
+// UPLOAD BUFFER TO CLOUDINARY
+// ============================================================
 
 const uploadToCloudinary = (buffer) => {
   return new Promise((resolve, reject) => {
-    const stream = cloudinary.uploader.upload_stream(
-      {
-        folder: "website/portfolio",
-        resource_type: "image",
-      },
-      (error, result) => {
-        if (error) {
-          reject(error);
-        } else {
-          resolve(result);
+    const stream =
+      cloudinary.uploader.upload_stream(
+        {
+          folder: "website/portfolio",
+          resource_type: "image",
+        },
+
+        (error, result) => {
+          if (error) {
+            reject(error);
+          } else {
+            resolve(result);
+          }
         }
-      }
-    );
+      );
 
     stream.end(buffer);
   });
 };
 
+
+// ============================================================
+// CREATE PORTFOLIO
+// ============================================================
+
 const createPortfolio = async (req, res) => {
   try {
+    console.log("=================================");
+    console.log("CREATE PORTFOLIO");
+    console.log("=================================");
+
+    console.log("User:", req.user?._id);
+    console.log("Body:", req.body);
+    console.log("File:", req.file
+      ? {
+          fieldname: req.file.fieldname,
+          originalname: req.file.originalname,
+          mimetype: req.file.mimetype,
+          size: req.file.size,
+        }
+      : null
+    );
+
     const {
       title,
       description,
     } = req.body;
 
+
+    // ========================================================
+    // VALIDATE TEXT
+    // ========================================================
+
     if (!title || !description) {
       return res.status(400).json({
         success: false,
-        message: "Title and description are required",
+        message:
+          "Title and description are required",
       });
     }
+
+
+    // ========================================================
+    // VALIDATE IMAGE
+    // ========================================================
 
     if (!req.file) {
       return res.status(400).json({
@@ -42,107 +82,257 @@ const createPortfolio = async (req, res) => {
       });
     }
 
-    const uploaded = await uploadToCloudinary(
-      req.file.buffer
+
+    // ========================================================
+    // UPLOAD TO CLOUDINARY
+    // ========================================================
+
+    console.log(
+      "Uploading image to Cloudinary..."
     );
 
-    const portfolio = await Portfolio.create({
-      title,
-      description,
+    const uploaded =
+      await uploadToCloudinary(
+        req.file.buffer
+      );
 
-      imageUrl: uploaded.secure_url,
-      imagePublicId: uploaded.public_id,
 
-      createdBy: req.user._id,
-    });
+    console.log(
+      "Cloudinary upload successful:",
+      uploaded.secure_url
+    );
 
-    res.status(201).json({
-      success: true,
-      message: "Portfolio created successfully",
-      data: portfolio,
-    });
-  } catch (error) {
-    res.status(500).json({
-      success: false,
-      message: "Failed to create portfolio",
-      error: error.message,
-    });
-  }
-};
 
-const getPortfolios = async (req, res) => {
-  try {
-    const portfolios = await Portfolio.find()
-      .populate("createdBy", "name email")
-      .sort({
-        createdAt: -1,
+    // ========================================================
+    // SAVE TO DATABASE
+    // ========================================================
+
+    const portfolio =
+      await Portfolio.create({
+        title:
+          title.trim(),
+
+        description:
+          description.trim(),
+
+        imageUrl:
+          uploaded.secure_url,
+
+        imagePublicId:
+          uploaded.public_id,
+
+        createdBy:
+          req.user._id,
       });
 
-    res.json({
+
+    // ========================================================
+    // RESPONSE
+    // ========================================================
+
+    return res.status(201).json({
       success: true,
-      count: portfolios.length,
-      data: portfolios,
+
+      message:
+        "Portfolio created successfully",
+
+      data: portfolio,
     });
+
   } catch (error) {
-    res.status(500).json({
+    console.error(
+      "CREATE PORTFOLIO ERROR:",
+      error
+    );
+
+    return res.status(500).json({
       success: false,
-      message: "Failed to load portfolios",
+
+      message:
+        "Failed to create portfolio",
+
+      error:
+        error.message,
     });
   }
 };
 
-const getPortfolio = async (req, res) => {
+
+// ============================================================
+// GET ALL PORTFOLIOS
+// ============================================================
+
+const getPortfolios = async (
+  req,
+  res
+) => {
   try {
-    const portfolio = await Portfolio.findById(
-      req.params.id
-    ).populate("createdBy", "name email");
+    const portfolios =
+      await Portfolio.find()
+        .populate(
+          "createdBy",
+          "name email"
+        )
+        .sort({
+          createdAt: -1,
+        });
+
+
+    return res.json({
+      success: true,
+
+      count:
+        portfolios.length,
+
+      data:
+        portfolios,
+    });
+
+  } catch (error) {
+    console.error(
+      "GET PORTFOLIOS ERROR:",
+      error
+    );
+
+    return res.status(500).json({
+      success: false,
+
+      message:
+        "Failed to load portfolios",
+
+      error:
+        error.message,
+    });
+  }
+};
+
+
+// ============================================================
+// GET SINGLE PORTFOLIO
+// ============================================================
+
+const getPortfolio = async (
+  req,
+  res
+) => {
+  try {
+    const portfolio =
+      await Portfolio.findById(
+        req.params.id
+      ).populate(
+        "createdBy",
+        "name email"
+      );
+
 
     if (!portfolio) {
       return res.status(404).json({
         success: false,
-        message: "Portfolio not found",
+
+        message:
+          "Portfolio not found",
       });
     }
 
-    res.json({
+
+    return res.json({
       success: true,
-      data: portfolio,
+
+      data:
+        portfolio,
     });
+
   } catch (error) {
-    res.status(500).json({
+    console.error(
+      "GET PORTFOLIO ERROR:",
+      error
+    );
+
+    return res.status(500).json({
       success: false,
-      message: "Failed to load portfolio",
+
+      message:
+        "Failed to load portfolio",
+
+      error:
+        error.message,
     });
   }
 };
 
-const updatePortfolio = async (req, res) => {
+
+// ============================================================
+// UPDATE PORTFOLIO
+// ============================================================
+
+const updatePortfolio = async (
+  req,
+  res
+) => {
   try {
-    const portfolio = await Portfolio.findById(
-      req.params.id
-    );
+    const portfolio =
+      await Portfolio.findById(
+        req.params.id
+      );
+
 
     if (!portfolio) {
       return res.status(404).json({
         success: false,
-        message: "Portfolio not found",
+
+        message:
+          "Portfolio not found",
       });
     }
 
-    if (req.body.title !== undefined) {
-      portfolio.title = req.body.title;
+
+    // ========================================================
+    // UPDATE TITLE
+    // ========================================================
+
+    if (
+      req.body.title !== undefined
+    ) {
+      portfolio.title =
+        req.body.title.trim();
     }
 
-    if (req.body.description !== undefined) {
-      portfolio.description = req.body.description;
+
+    // ========================================================
+    // UPDATE DESCRIPTION
+    // ========================================================
+
+    if (
+      req.body.description !== undefined
+    ) {
+      portfolio.description =
+        req.body.description.trim();
     }
+
+
+    // ========================================================
+    // UPDATE IMAGE
+    // ========================================================
 
     if (req.file) {
+
+      console.log(
+        "New image received:",
+        req.file.originalname
+      );
+
+
+      // Delete old Cloudinary image
       if (portfolio.imagePublicId) {
         try {
           await cloudinary.uploader.destroy(
             portfolio.imagePublicId
           );
+
+          console.log(
+            "Old Cloudinary image deleted"
+          );
+
         } catch (error) {
           console.error(
             "Old image deletion failed:",
@@ -151,48 +341,97 @@ const updatePortfolio = async (req, res) => {
         }
       }
 
-      const uploaded = await uploadToCloudinary(
-        req.file.buffer
-      );
 
-      portfolio.imageUrl = uploaded.secure_url;
-      portfolio.imagePublicId = uploaded.public_id;
+      // Upload new image
+      const uploaded =
+        await uploadToCloudinary(
+          req.file.buffer
+        );
+
+
+      portfolio.imageUrl =
+        uploaded.secure_url;
+
+      portfolio.imagePublicId =
+        uploaded.public_id;
     }
+
+
+    // ========================================================
+    // SAVE
+    // ========================================================
 
     await portfolio.save();
 
-    res.json({
+
+    return res.json({
       success: true,
-      message: "Portfolio updated successfully",
-      data: portfolio,
+
+      message:
+        "Portfolio updated successfully",
+
+      data:
+        portfolio,
     });
+
   } catch (error) {
-    res.status(500).json({
+    console.error(
+      "UPDATE PORTFOLIO ERROR:",
+      error
+    );
+
+    return res.status(500).json({
       success: false,
-      message: "Failed to update portfolio",
-      error: error.message,
+
+      message:
+        "Failed to update portfolio",
+
+      error:
+        error.message,
     });
   }
 };
 
-const deletePortfolio = async (req, res) => {
+
+// ============================================================
+// DELETE PORTFOLIO
+// ============================================================
+
+const deletePortfolio = async (
+  req,
+  res
+) => {
   try {
-    const portfolio = await Portfolio.findById(
-      req.params.id
-    );
+    const portfolio =
+      await Portfolio.findById(
+        req.params.id
+      );
+
 
     if (!portfolio) {
       return res.status(404).json({
         success: false,
-        message: "Portfolio not found",
+
+        message:
+          "Portfolio not found",
       });
     }
+
+
+    // ========================================================
+    // DELETE CLOUDINARY IMAGE
+    // ========================================================
 
     if (portfolio.imagePublicId) {
       try {
         await cloudinary.uploader.destroy(
           portfolio.imagePublicId
         );
+
+        console.log(
+          "Cloudinary image deleted"
+        );
+
       } catch (error) {
         console.error(
           "Cloudinary deletion failed:",
@@ -201,22 +440,46 @@ const deletePortfolio = async (req, res) => {
       }
     }
 
+
+    // ========================================================
+    // DELETE DATABASE RECORD
+    // ========================================================
+
     await Portfolio.deleteOne({
-      _id: portfolio._id,
+      _id:
+        portfolio._id,
     });
 
-    res.json({
+
+    return res.json({
       success: true,
-      message: "Portfolio deleted successfully",
+
+      message:
+        "Portfolio deleted successfully",
     });
+
   } catch (error) {
-    res.status(500).json({
+    console.error(
+      "DELETE PORTFOLIO ERROR:",
+      error
+    );
+
+    return res.status(500).json({
       success: false,
-      message: "Failed to delete portfolio",
-      error: error.message,
+
+      message:
+        "Failed to delete portfolio",
+
+      error:
+        error.message,
     });
   }
 };
+
+
+// ============================================================
+// EXPORT
+// ============================================================
 
 module.exports = {
   createPortfolio,

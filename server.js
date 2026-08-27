@@ -4,38 +4,105 @@ const express = require("express");
 const cors = require("cors");
 const cookieParser = require("cookie-parser");
 
-const connectDB = require("./config/db");
+const connectDB = require("./src/config/db");
 
-const authRoutes = require("./routes/authRoutes");
-const portfolioRoutes = require("./routes/portfolioRoutes");
-const settingsRoutes = require("./routes/settingsRoutes");
-const enquiryRoutes = require("./routes/enquiryRoutes");
-
-const errorHandler = require("./middleware/errorMiddleware");
+const authRoutes = require("./src/routes/authRoutes");
+const portfolioRoutes = require("./src/routes/portfolioRoutes");
+const settingsRoutes = require("./src/routes/settingsRoutes");
+const enquiryRoutes = require("./src/routes/enquiryRoutes");
 
 const app = express();
 
+/*
+|--------------------------------------------------------------------------
+| DATABASE
+|--------------------------------------------------------------------------
+*/
+
 connectDB();
+
+/*
+|--------------------------------------------------------------------------
+| CORS
+|--------------------------------------------------------------------------
+|
+| Flutter Web -> ngrok -> Node
+|
+*/
 
 app.use(
   cors({
-    origin: process.env.FRONTEND_URL
-      ? process.env.FRONTEND_URL.split(",")
-      : "*",
-
+    origin: true,
     credentials: true,
+
+    methods: [
+      "GET",
+      "POST",
+      "PUT",
+      "PATCH",
+      "DELETE",
+      "OPTIONS",
+    ],
+
+    allowedHeaders: [
+      "Content-Type",
+      "Authorization",
+      "Accept",
+      "X-Requested-With",
+    ],
   })
 );
 
-app.use(express.json({ limit: "10mb" }));
-app.use(express.urlencoded({ extended: true }));
+/*
+|--------------------------------------------------------------------------
+| BODY PARSER
+|--------------------------------------------------------------------------
+*/
+
+app.use(
+  express.json({
+    limit: "10mb",
+  })
+);
+
+app.use(
+  express.urlencoded({
+    extended: true,
+    limit: "10mb",
+  })
+);
 
 app.use(cookieParser());
+
+/*
+|--------------------------------------------------------------------------
+| REQUEST LOGGER
+|--------------------------------------------------------------------------
+*/
+
+app.use((req, res, next) => {
+  console.log("=================================");
+  console.log("REQUEST");
+  console.log("=================================");
+  console.log("Method:", req.method);
+  console.log("URL:", req.originalUrl);
+  console.log("Origin:", req.headers.origin || "No origin");
+  console.log("User-Agent:", req.headers["user-agent"] || "No user-agent");
+  console.log("=================================");
+
+  next();
+});
+
+/*
+|--------------------------------------------------------------------------
+| HEALTH
+|--------------------------------------------------------------------------
+*/
 
 app.get("/", (req, res) => {
   res.json({
     success: true,
-    message: "Website backend API is running",
+    message: "IATA backend API is running",
   });
 });
 
@@ -47,20 +114,86 @@ app.get("/api/health", (req, res) => {
   });
 });
 
-app.use("/api/auth", authRoutes);
+/*
+|--------------------------------------------------------------------------
+| ROUTES
+|--------------------------------------------------------------------------
+*/
 
-app.use("/api/portfolio", portfolioRoutes);
+app.use(
+  "/api/auth",
+  authRoutes
+);
 
-app.use("/api/settings", settingsRoutes);
+app.use(
+  "/api/portfolio",
+  portfolioRoutes
+);
 
-app.use("/api/enquiries", enquiryRoutes);
+app.use(
+  "/api/settings",
+  settingsRoutes
+);
 
-app.use(errorHandler);
+app.use(
+  "/api/enquiries",
+  enquiryRoutes
+);
 
-const PORT = process.env.PORT || 5000;
+/*
+|--------------------------------------------------------------------------
+| 404
+|--------------------------------------------------------------------------
+*/
 
-app.listen(PORT, () => {
-  console.log(
-    `Server running on http://localhost:${PORT}`
-  );
+app.use((req, res) => {
+  res.status(404).json({
+    success: false,
+    message: `Route not found: ${req.method} ${req.originalUrl}`,
+  });
 });
+
+/*
+|--------------------------------------------------------------------------
+| ERROR HANDLER
+|--------------------------------------------------------------------------
+*/
+
+app.use((err, req, res, next) => {
+  console.error("=================================");
+  console.error("SERVER ERROR");
+  console.error("=================================");
+  console.error(err);
+  console.error("=================================");
+
+  res.status(err.status || 500).json({
+    success: false,
+    message:
+      err.message || "Internal server error",
+  });
+});
+
+/*
+|--------------------------------------------------------------------------
+| START SERVER
+|--------------------------------------------------------------------------
+*/
+
+const PORT = process.env.PORT || 3000;
+
+app.listen(
+  PORT,
+  "0.0.0.0",
+  () => {
+    console.log("=================================");
+    console.log("IATA BACKEND");
+    console.log("=================================");
+    console.log(
+      `Server running on http://localhost:${PORT}`
+    );
+    console.log(
+      `Portfolio API: http://localhost:${PORT}/api/portfolio`
+    );
+    console.log("=================================");
+  }
+);

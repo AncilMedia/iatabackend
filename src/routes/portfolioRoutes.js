@@ -17,12 +17,31 @@ const upload = require("../middleware/uploadMiddleware");
 
 const router = express.Router();
 
-// Public
-router.get("/", getPortfolios);
+/*
+|--------------------------------------------------------------------------
+| PUBLIC
+|--------------------------------------------------------------------------
+*/
 
-router.get("/:id", getPortfolio);
+// GET ALL
+router.get(
+  "/",
+  getPortfolios
+);
 
-// Admin
+// GET SINGLE
+router.get(
+  "/:id",
+  getPortfolio
+);
+
+/*
+|--------------------------------------------------------------------------
+| ADMIN
+|--------------------------------------------------------------------------
+*/
+
+// CREATE
 router.post(
   "/",
   protect,
@@ -31,6 +50,7 @@ router.post(
   createPortfolio
 );
 
+// UPDATE
 router.put(
   "/:id",
   protect,
@@ -39,6 +59,7 @@ router.put(
   updatePortfolio
 );
 
+// DELETE
 router.delete(
   "/:id",
   protect,
